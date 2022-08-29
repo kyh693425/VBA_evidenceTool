@@ -62,7 +62,7 @@ Sub ExportWorkSheets()
 
     '不要Sheet削除
     For Each newSht In wbTarget.Worksheets
-        If newSht.Name = "Sheetl" Or newSht.Name = "Sheet2" Or newSht.Name = "Sheet3" Then
+        If newSht.Name = "Sheet1" Or newSht.Name = "Sheet2" Or newSht.Name = "Sheet3" Then
             newSht.Delete
         End If
     Next newSht
@@ -76,7 +76,7 @@ Sub ExportWorkSheets()
 
     OpenExplorer (wbTarget.Path)
 
- cleanObjects:
+cleanObjects:
     Set wbTarget = Nothing
     Set wbSource = Nothing
     Exit Sub
@@ -105,7 +105,7 @@ Sub FList_MST()
         Call Folder_List(F_Info)
 
         With Application
-            Screen Updating = True
+            ScreenUpdating = True
             .EnableEvents = False
             .Calculation = xICalculationManual
         End With
@@ -137,17 +137,17 @@ Sub File_List(F_Info As Folder)
     Set FileList = F_Info.Files
 
     If FileList.Count = 0 Then
-        fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダから有?な??ファイルを見付かりませんでした。", Buttons:=vbOKOnly)
+        fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
 
         If fileCheck = 1 Then
             Exit Sub
         End If
 
     Else
-        fileName = Dir(F_Info.Path & "¥" & "*.*")
+        fileName = Dir(F_Info.Path & "\" & "*.*")
 
         If FileList.Count > 0 And fileName = "" Then
-            fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダから有?な??ファイルを見付かりませんでした。", Buttons:=vbOKOnly)
+            fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
 
             If fileCheck = 1 Then
                 Exit Sub
@@ -184,7 +184,7 @@ Sub File_List(F_Info As Folder)
             If UCase(arrExt(UBound(arrExt))) = "JPG" Or _
                 UCase(arrExt(UBound(arrExt))) = "JPEG" Or _
                 UCase(arrExt(UBound(arrExt))) = "PNG" Then
-
+                
                 picStr = F_Info.Path & "\" & fileName
 
                 Set ImageObj = CreateObject("WIA.ImageFile")
@@ -199,7 +199,14 @@ Sub File_List(F_Info As Folder)
                         Set imgRng = Range(Cells(cR, cC), Cells(cR + 115, cC + 55))
 
                         With Range("Al", imgRng.Offset(-1, -1))
-                            Set pic = ActiveSheet.Shapes.AddPicture(picStr, False, True, imgRng.Left, imgRng.Top, imgRng.Width, imgRng.Height)
+                            Set pic = ActiveSheet.Shapes.AddPicture( _ 
+                                    picStr, _
+                                    False, _
+                                    True, _
+                                    imgRng.Left, _
+                                    imgRng.Top, _
+                                    imgRng.Width, _
+                                    imgRng.Height)
                         End With
 
                         With pic
@@ -238,7 +245,7 @@ Function SameSheetNmSearch(wb As Workbook, shtNm As String) As Boolean
         If sh.Name = shtNm Then
             SameSheetNmSearch = True
         End If
-        Next
+    Next
 End Function
 
 Sub OpenExplorer(target As String)
