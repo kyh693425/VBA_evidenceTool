@@ -1,4 +1,3 @@
-'Sheet削除
 Sub DeleteSheet()
     Dim sht         As Worksheet
 
@@ -8,11 +7,11 @@ Sub DeleteSheet()
             sht.Delete
         End If
     Next sht
+
     MsgBox "Sheet初期化完了。", , "終了"
     Application.DisplayAlerts = True
 End Sub
 
-'Sheet抽出
 Sub ExportWorkSheets()
     Dim wbSource, wbTarget As Workbook
     Dim workSheetsList As String
@@ -33,7 +32,7 @@ Sub ExportWorkSheets()
     workSheetArr = Split(workSheetsList, ":")
 
     If UBound(workSheetArr) = -1 Then
-        MsgBox "抽出?象Sheetがありません。", vbInformation
+        MsgBox "対象Sheetがありません。", vbInformation
         Exit Sub
     End If
 
@@ -74,15 +73,16 @@ Sub ExportWorkSheets()
 
     MsgBox "抽出完了", vbInformation
 
-    OpenExplorer (wbTarget.Path)
+    Call OpenExplorer(wbTarget.Path)
 
-cleanObjects:
+ cleanObjects:
     Set wbTarget = Nothing
     Set wbSource = Nothing
     Exit Sub
 
 End Sub
 
+'select folder
 Sub FList_MST()
     Dim F_Dig As FileDialog
     Dim FS As Scripting.FileSystemObject
@@ -125,130 +125,135 @@ Sub Folder_List(F_Info As Folder)
 End Sub
 
 Sub File_List(F_Info As Folder)
-    Dim FleList, FileListUp As File
-    Dim totalSheets As Integer
-    Dim imgRng As Range
-    Dim cR, cC, i As Integer
-    Dim ans As Long
-    Dim fileName, picStr, tempNm As String
-    Dim allFiles As Variant
-    Dim ImageObj As Object
+    Dim fileName As String
 
     Set FileList = F_Info.Files
 
     If FileList.Count = 0 Then
-        fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
-
-        If fileCheck = 1 Then
-            Exit Sub
-        End If
-
+        Call AlertMessage(1, F_Info.Name)
+        Exit Sub
     Else
         fileName = Dir(F_Info.Path & "\" & "*.*")
 
         If FileList.Count > 0 And fileName = "" Then
-            fileCheck = MsgBox(prompt:="[" & F_Info.Name & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
-
-            If fileCheck = 1 Then
-                Exit Sub
-            End If
-
+            Call AlertMessage(1, F_Info.Name)
+            Exit Sub
         End If
 
-        'Sheet名重複チェック
-        If SameSheetNmSearch(ThisWorkbook, F_Info.Name) = False Then
-            Worksheets.Add After:=Worksheets(Sheets.Count)
-            ActiveSheet.Name = F_Info.Name
-        Else
-            ans = MsgBox(prompt:=" [" & F_Info.Name & "]Sheetは存在しています。" & F_Info.Name & "を上書きしますか？", Buttons:=vbYesNo)
-            If ans = 6 Then
-                Application.DisplayAlerts = False
-                Worksheets(F_Info.Name).Delete
-                Application.DisplayAlerts = True
-                Worksheets.Add After:=Worksheets(Sheets.Count)
-                ActiveSheet.Name = F_Info.Name
-            Else
-                MsgBox "Toolを終了します。", , "終了"
-                Exit Sub
-            End If
-        End If
+        Call SearchSameNameSheet(ThisWorkbook, F_Info.Name)
 
-        ActiveSheet.Cells.ColumnWidth = 2
-        ActiveSheet.Cells.RowHeight = 12
-
-        'pic取得
-        cR = 3 'start行
-        Do While fileName <> ""
-            arrExt = Split(fileName, ".")
-
-            If UCase(arrExt(UBound(arrExt))) = "JPG" Or _
-                UCase(arrExt(UBound(arrExt))) = "JPEG" Or _
-                UCase(arrExt(UBound(arrExt))) = "PNG" Then
-                
-                picStr = F_Info.Path & "\" & fileName
-
-                Set ImageObj = CreateObject("WIA.ImageFile")
-                ImageObj.LoadFile picStr
-
-                For cC = 2 To 2
-                    If ImageObj.Height > 3000 Then
-                        Set imgRng = Range(Cells(cR, cC), Cells(cR + 230, cC + 55))
-                    Elself ImageObj.Height > 3000 Then
-                        Set imgRng = Range(Cells(cR, cC), Cells(cR + 50, cC + 55))
-                    Else
-                        Set imgRng = Range(Cells(cR, cC), Cells(cR + 115, cC + 55))
-
-                        With Range("Al", imgRng.Offset(-1, -1))
-                            Set pic = ActiveSheet.Shapes.AddPicture( _ 
-                                    picStr, _
-                                    False, _
-                                    True, _
-                                    imgRng.Left, _
-                                    imgRng.Top, _
-                                    imgRng.Width, _
-                                    imgRng.Height)
-                        End With
-
-                        With pic
-                            .LockAspectRatio = msoFalse
-                        End With
-
-                        fileName = Dir
-                    Next cC
-
-                    '次の行Start
-                    If ImageObj.Height > 3000 Then
-                        cR = cR + 233
-                    ElseIf ImageObj.Height < 1300 Then
-                        cR = cR + 53
-                    Else
-                        cR = cR + 118
-                    End If
-                Else
-                    fileCheck = MsgBox(prompt:=F_Info.Name & "ファイルがありません。確認してください。", Buttons:=vbOKOnly)
-                    If fileCheck = 1 Then
-                        Exit Sub
-                    End If
-                End If
-            Loop
-        End If
+        Call EditPicture(fileName, F_Info)
+    End If
 End Sub
 
-'Sheet名重複チェック
-Function SameSheetNmSearch(wb As Workbook, shtNm As String) As Boolean
-    Dim i As Long
-    Dim sh As Worksheet
-    SameSheetNmSearch = False
-    wb.Activate
+Sub EditPicture(fileName As String, F_Info As Folder)
+    Dim imgRng As Range
+    Dim cR, cC As Integer
+    Dim picStr As String
+    Dim ImageObj As Object
 
-    For Each sh In Sheets
-        If sh.Name = shtNm Then
-            SameSheetNmSearch = True
+    ActiveSheet.Cells.ColumnWidth = 2
+    ActiveSheet.Cells.RowHeight = 12
+
+    'pic取得
+    cR = 3 'start行
+    Do While fileName <> ""
+        arrExt = Split(fileName, ".")
+
+        If UCase(arrExt(UBound(arrExt))) = "JPG" Or _
+            UCase(arrExt(UBound(arrExt))) = "JPEG" Or _
+            UCase(arrExt(UBound(arrExt))) = "PNG" Then
+
+            picStr = F_Info.Path & "\" & fileName
+
+            Set ImageObj = CreateObject("WIA.ImageFile")
+            ImageObj.LoadFile picStr
+
+            For cC = 2 To 2
+                If ImageObj.Height > 3000 Then
+                    Set imgRng = Range(Cells(cR, cC), Cells(cR + 230, cC + 55))
+                Elself ImageObj.Height < 1300 Then
+                    Set imgRng = Range(Cells(cR, cC), Cells(cR + 50, cC + 55))
+                Else
+                    Set imgRng = Range(Cells(cR, cC), Cells(cR + 115, cC + 55))
+                End If
+
+                With Range("Al", imgRng.Offset(-1, -1))
+                    Set pic = ActiveSheet.Shapes.AddPicture( _
+                    picStr, _
+                    False, _
+                    True, _
+                    imgRng.Left, _
+                    imgRng.Top, _
+                    imgRng.Width, _
+                    imgRng.Height)
+                End With
+
+                With pic
+                    .LockAspectRatio = msoFalse
+                End With
+
+                fileName = Dir
+            Next cC
+
+            '次の行Start
+            If ImageObj.Height > 3000 Then
+                cR = cR + 233
+            ElseIf ImageObj.Height < 1300 Then
+                cR = cR + 53
+            Else
+                cR = cR + 118
+            End If
+        Else
+            Call AlertMessage(1, F_Info.Name)
+            Exit Sub
         End If
-    Next
-End Function
+    Loop
+End Sub
 
 Sub OpenExplorer(target As String)
     Call Shell("explorer.exe" & "" & target, vbNormalFocus)
 End Sub
+
+Sub SearchSameNameSheet(wb As Workbook, shtNm As String) As Boolean
+    Dim sh As Worksheet
+    Dim isSameFlg As Boolean
+    Dim buttonValue As Long
+    wb.Activate
+
+    isSameFlg = False
+    For Each sh In Sheets
+        If sh.Name = shtNm Then
+            isSameFlg = True
+        End If
+    Next sh
+
+    If isSameFlg = False Then
+        Worksheets.Add After:=Worksheets(Sheets.Count)
+        ActiveSheet.Name = shtNm
+    Else
+        buttonValue = MsgBox(prompt:=" [" & shtNm & "]Sheetは存在しています。" & shtNm & "を上書きしますか？", Buttons:=vbYesNo)
+        If buttonValue = 6 Then
+            Application.DisplayAlerts = False
+            Worksheets(shtNm).Delete
+            Application.DisplayAlerts = True
+            Worksheets.Add After:=Worksheets(Sheets.Count)
+            ActiveSheet.Name = shtNm
+        Else
+            MsgBox "Toolを終了します。", , "終了"
+            Exit Sub
+        End If
+    End If
+End Sub
+
+Sub AlertMessage(flg As Integer, shtNm As String)
+    If flg = 1 Then
+        fileCheck = MsgBox(prompt:="[" & shtNm & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
+        If fileCheck = 1 Then
+            Exit Sub
+        End If
+    End If
+End Sub
+
+
 
