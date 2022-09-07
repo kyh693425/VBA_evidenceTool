@@ -1,15 +1,23 @@
+Option Explicit
+
 Sub DeleteSheet()
-    Dim sht         As Worksheet
+    Dim sht As Worksheet
+    Dim buttonValue As Integer
 
-    Application.DisplayAlerts = False
-    For Each sht In ThisWorkbook.Worksheets
-        If sht.Name <> "Tool" Then
-            sht.Delete
-        End If
-    Next sht
-
-    MsgBox "Sheet初期化完了。", , "終了"
-    Application.DisplayAlerts = True
+    buttonValue = MsgBox(prompt:=" [" & shtNm & "]Sheetは存在しています。" & shtNm & "を上書きしますか？", Buttons:=vbYesNo)
+    If buttonValue = 6 Then
+        Application.DisplayAlerts = False
+        For Each sht In ThisWorkbook.Worksheets
+            If sht.Name <> "Tool" Then
+                sht.Delete
+            End If
+        Next sht
+        MsgBox "Sheet初期化完了。", , "終了"
+        Application.DisplayAlerts = True
+    Else
+        MsgBox "Canceled Clean sheets", , "終了"
+        Exit Sub
+    End If
 End Sub
 
 Sub ExportWorkSheets()
@@ -66,8 +74,7 @@ Sub ExportWorkSheets()
         End If
     Next newSht
 
-    wbTarget.SaveAs fileName:=strFileNm, _
-    FileFormat:=xlOpenXMLWorkbook
+    wbTarget.SaveAs fileName:=strFileNm, FileFormat:=xlOpenXMLWorkbook
 
     Application.DisplayAlerts = True
 
@@ -79,7 +86,6 @@ Sub ExportWorkSheets()
     Set wbTarget = Nothing
     Set wbSource = Nothing
     Exit Sub
-
 End Sub
 
 'select folder
@@ -87,12 +93,12 @@ Sub FList_MST()
     Dim F_Dig As FileDialog
     Dim FS As Scripting.FileSystemObject
     Dim F_Info As Folder
-    Dim check As Integer
+    Dim check, Row As Integer
 
     With Application
         .ScreenUpdating = False
-        EnableEvents = False
-        Calculation = xICalculationManual
+        .EnableEvents = False
+        .Calculation = xICalculationManual
     End With
 
     Set F_Dig = Application.FileDialog(msoFileDialogFolderPicker)
@@ -105,7 +111,7 @@ Sub FList_MST()
         Call Folder_List(F_Info)
 
         With Application
-            ScreenUpdating = True
+            .ScreenUpdating = True
             .EnableEvents = False
             .Calculation = xICalculationManual
         End With
@@ -125,40 +131,37 @@ Sub Folder_List(F_Info As Folder)
 End Sub
 
 Sub File_List(F_Info As Folder)
-    Dim fileName As String
+    Dim FileList As Variant
 
     Set FileList = F_Info.Files
 
     If FileList.Count = 0 Then
-        Call AlertMessage(1, F_Info.Name)
+        Call AlertMessage(1, F_Info, "")
         Exit Sub
     Else
-        fileName = Dir(F_Info.Path & "\" & "*.*")
-
-        If FileList.Count > 0 And fileName = "" Then
-            Call AlertMessage(1, F_Info.Name)
-            Exit Sub
-        End If
-
-        Call SearchSameNameSheet(ThisWorkbook, F_Info.Name)
-
-        Call EditPicture(fileName, F_Info)
+        '名前中腹チェック
+        Call SearchSameNameSheet(ThisWorkbook, F_Info)
+        '写真編集
+        Call EditPicture(F_Info)
     End If
 End Sub
 
 Sub EditPicture(fileName As String, F_Info As Folder)
     Dim imgRng As Range
-    Dim cR, cC As Integer
+    Dim cR, cC, arrExt_length, ans As Integer
     Dim picStr As String
     Dim ImageObj As Object
+    Dim arrExt, pic As Variant
+    Dim f As File
 
     ActiveSheet.Cells.ColumnWidth = 2
     ActiveSheet.Cells.RowHeight = 12
 
     'pic取得
     cR = 3 'start行
-    Do While fileName <> ""
+    For Each f in F_Info.Files
         arrExt = Split(fileName, ".")
+        arrExt_length = UBound(arrExt) - LBound(arrExt) +1
 
         If UCase(arrExt(UBound(arrExt))) = "JPG" Or _
             UCase(arrExt(UBound(arrExt))) = "JPEG" Or _
@@ -204,11 +207,14 @@ Sub EditPicture(fileName As String, F_Info As Folder)
             Else
                 cR = cR + 118
             End If
+        ElseIf arrExt_length = 1 Then
+            Call AlertMessage(2, F_Info, f.Name)
+        ElseIf f.Attribute = (Hidden + System + Archive) Or f.Attribute = (Hidden + Archive) Or f.Attribute = (Hidden + System) Or f.Attribute = Hidden Then
+            Call AlertMessage(2, F_Info, f.Name)
         Else
-            Call AlertMessage(1, F_Info.Name)
-            Exit Sub
+            Call AlertMessage(1, F_Info, "")
         End If
-    Loop
+    Next f
 End Sub
 
 Sub OpenExplorer(target As String)
@@ -246,12 +252,13 @@ Sub SearchSameNameSheet(wb As Workbook, shtNm As String) As Boolean
     End If
 End Sub
 
-Sub AlertMessage(flg As Integer, shtNm As String)
+Sub AlertMessage(flg As Integer, F_Info As Folder, fileNm As Single)
     If flg = 1 Then
-        fileCheck = MsgBox(prompt:="[" & shtNm & "]のフォルダからpicファイルを見付かりませんでした。", Buttons:=vbOKOnly)
-        If fileCheck = 1 Then
-            Exit Sub
-        End If
+        MsgBox "[" & F_Info.Name & "]のフォルダから有効な写真ファイルを見付かりませんでした。　確認してください。"
+    End If
+
+    If flg = 2 Then
+        MsgBox "[" & F_Info.Name & "]フォルダの[" & fileNm & "]ファイルは有効なファイル形式ではありません。　確認してください。"
     End If
 End Sub
 
