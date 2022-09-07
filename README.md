@@ -1,5 +1,5 @@
 # VBA_evidenceTool
-えビデンス作成ツールです。
+エビデンス作成ツールです。
 Windows 環境専用です。
 
 fileSystemObjectを使用しています。
